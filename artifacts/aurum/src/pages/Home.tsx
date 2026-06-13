@@ -99,7 +99,7 @@ export default function Home() {
             <img
               src={slides[currentSlide].image}
               alt=""
-              className="w-full h-full object-cover object-top grayscale"
+              className="w-full h-full object-cover object-top"
               draggable={false}
             />
             <div className="absolute inset-0 bg-black/55" />
