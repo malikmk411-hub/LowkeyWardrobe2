@@ -45,7 +45,7 @@ export default function AdminLogin() {
         className="w-full max-w-[420px]"
       >
         <div className="text-center mb-12">
-          <div className="font-serif text-[28px] font-medium tracking-[0.18em] mb-2">AURUM</div>
+          <div className="font-serif text-[20px] font-medium tracking-[0.22em] mb-2 uppercase">Lowkey Wardrobe</div>
           <p className="text-[11px] uppercase tracking-[0.2em] text-[#999999]">Admin Portal</p>
         </div>
 
@@ -102,7 +102,7 @@ export default function AdminLogin() {
         </div>
 
         <p className="text-center text-[12px] text-[#999999] mt-6">
-          <a href="/" className="hover:text-black transition-colors">← Back to AURUM</a>
+          <a href="/" className="hover:text-black transition-colors">← Back to Lowkey Wardrobe</a>
         </p>
       </motion.div>
     </div>

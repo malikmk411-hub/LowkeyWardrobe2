@@ -31,7 +31,7 @@ export function AdminLayout({ children, title }: AdminLayoutProps) {
   const Sidebar = () => (
     <div className="flex flex-col h-full">
       <div className="px-6 py-8 border-b border-[#EAEAEA]">
-        <div className="font-serif text-[20px] font-medium tracking-[0.18em]">AURUM</div>
+        <div className="font-serif text-[14px] font-medium tracking-[0.22em] uppercase">Lowkey Wardrobe</div>
         <p className="text-[9px] uppercase tracking-[0.2em] text-[#999999] mt-1">Admin Portal</p>
       </div>
       <nav className="flex-1 px-3 py-6 space-y-1">

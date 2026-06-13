@@ -34,14 +34,14 @@ export function Navbar() {
         <div className="h-full px-8 flex items-center justify-between">
           {/* Logo */}
           <Link href="/">
-            <div className="font-serif text-[22px] font-medium tracking-[0.18em] cursor-pointer">AURUM</div>
+            <div className="font-serif text-[16px] font-medium tracking-[0.22em] cursor-pointer uppercase">Lowkey Wardrobe</div>
           </Link>
 
           {/* Center Links — desktop */}
           <div className="hidden md:flex items-center gap-9 absolute left-1/2 -translate-x-1/2">
             {navLinks.map((link) => (
               <Link key={link.label} href={link.href}>
-                <div className={`text-[11px] tracking-[0.15em] uppercase hover:opacity-70 transition-opacity cursor-pointer relative group ${link.sale ? 'text-[#C41E1E]' : ''}`}>
+                <div className={`text-[11px] tracking-[0.15em] uppercase hover:opacity-70 transition-opacity cursor-pointer relative group ${link.sale ? 'font-medium' : ''}`}>
                   {link.label}
                   <span className="absolute -bottom-1 left-0 w-0 h-[1px] bg-current transition-all duration-300 group-hover:w-full" />
                 </div>
@@ -99,7 +99,7 @@ export function Navbar() {
           <nav className="flex flex-col gap-5">
             {navLinks.map(link => (
               <Link key={link.label} href={link.href}>
-                <div onClick={() => setMobileOpen(false)} className={`text-[13px] uppercase tracking-[0.15em] ${link.sale ? 'text-[#C41E1E]' : ''}`}>
+                <div onClick={() => setMobileOpen(false)} className={`text-[13px] uppercase tracking-[0.15em] ${link.sale ? 'font-medium' : ''}`}>
                   {link.label}
                 </div>
               </Link>
