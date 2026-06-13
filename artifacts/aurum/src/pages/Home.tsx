@@ -173,9 +173,9 @@ export default function Home() {
       {/* 3. MARQUEE */}
       <div className="bg-black text-white py-3.5 overflow-hidden flex whitespace-nowrap" data-testid="marquee">
         <div className="animate-marquee inline-block">
-          <span className="text-[11px] font-light tracking-[0.2em] uppercase mx-4">Free shipping on orders over $250 · Complimentary gift wrapping · SS26 Collection — Now Available · 30-day returns · Exclusive member benefits ·</span>
-          <span className="text-[11px] font-light tracking-[0.2em] uppercase mx-4">Free shipping on orders over $250 · Complimentary gift wrapping · SS26 Collection — Now Available · 30-day returns · Exclusive member benefits ·</span>
-          <span className="text-[11px] font-light tracking-[0.2em] uppercase mx-4">Free shipping on orders over $250 · Complimentary gift wrapping · SS26 Collection — Now Available · 30-day returns · Exclusive member benefits ·</span>
+          <span className="text-[11px] font-light tracking-[0.2em] uppercase mx-4">Free shipping on orders over PKR 50,000 · Complimentary gift wrapping · SS26 Collection — Now Available · 30-day returns · Exclusive member benefits ·</span>
+          <span className="text-[11px] font-light tracking-[0.2em] uppercase mx-4">Free shipping on orders over PKR 50,000 · Complimentary gift wrapping · SS26 Collection — Now Available · 30-day returns · Exclusive member benefits ·</span>
+          <span className="text-[11px] font-light tracking-[0.2em] uppercase mx-4">Free shipping on orders over PKR 50,000 · Complimentary gift wrapping · SS26 Collection — Now Available · 30-day returns · Exclusive member benefits ·</span>
         </div>
       </div>
 
@@ -341,7 +341,7 @@ export default function Home() {
               <Truck size={20} strokeWidth={1} />
             </div>
             <h4 className="text-[12px] tracking-[0.15em] uppercase font-normal mb-3">Free Shipping</h4>
-            <p className="text-[13px] text-[#999999] font-light leading-[1.7] max-w-[240px]">Complimentary worldwide delivery on all orders over $250</p>
+            <p className="text-[13px] text-[#999999] font-light leading-[1.7] max-w-[240px]">Complimentary worldwide delivery on all orders over PKR 50,000</p>
           </div>
           <div className="flex flex-col items-center text-center">
             <div className="w-12 h-12 border border-[#EAEAEA] rounded-full flex items-center justify-center mb-6">

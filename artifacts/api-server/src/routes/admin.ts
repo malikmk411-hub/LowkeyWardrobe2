@@ -74,18 +74,67 @@ router.get("/admin/products", verifyAdmin, async (req, res) => {
   }
 });
 
+router.post("/admin/products", verifyAdmin, async (req, res) => {
+  const { name, brand, category, price, originalPrice, badge, description, stock, sizes, colors, imageUrl, isActive, figType, bgGradient, figColorA, figColorB } = req.body as any;
+  if (!name || !category || !price) {
+    return res.status(400).json({ error: "name, category, and price are required" });
+  }
+  try {
+    const baseSlug = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+    const slug = `${baseSlug}-${Date.now().toString().slice(-5)}`;
+    const sku = 'LKW-' + Date.now().toString().slice(-6);
+
+    const defaultFigType = figType || (category === 'shoes' ? 'sneaker' : category === 'accessories' ? 'watch' : 'coat');
+    const defaultBgGradient = bgGradient || 'linear-gradient(135deg, #f0f0f0, #e0e0e0)';
+    const defaultFigColorA = figColorA || '#c0c0c0';
+    const defaultFigColorB = figColorB || '#1e1e1e';
+
+    const [created] = await db.insert(productsTable).values({
+      slug,
+      sku,
+      name,
+      brand: brand || 'Lowkey Wardrobe',
+      category,
+      price: price.toString(),
+      originalPrice: originalPrice ? originalPrice.toString() : null,
+      badge: badge || null,
+      description: description || '',
+      stock: parseInt(stock) || 0,
+      sizes: sizes || [],
+      colors: colors || [],
+      imageUrl: imageUrl || null,
+      isActive: isActive !== undefined ? isActive : true,
+      figType: defaultFigType,
+      bgGradient: defaultBgGradient,
+      figColorA: defaultFigColorA,
+      figColorB: defaultFigColorB,
+      tags: [],
+    }).returning();
+
+    res.status(201).json(created);
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Failed to create product" });
+  }
+});
+
 router.put("/admin/products/:id", verifyAdmin, async (req, res) => {
   const id = parseInt(req.params.id);
-  const { name, price, originalPrice, badge, description, stock, isActive } = req.body as any;
+  const { name, brand, category, price, originalPrice, badge, description, stock, isActive, sizes, colors, imageUrl } = req.body as any;
   try {
     const updates: any = {};
     if (name !== undefined) updates.name = name;
-    if (price !== undefined) updates.price = price;
-    if (originalPrice !== undefined) updates.originalPrice = originalPrice;
-    if (badge !== undefined) updates.badge = badge;
+    if (brand !== undefined) updates.brand = brand;
+    if (category !== undefined) updates.category = category;
+    if (price !== undefined) updates.price = price.toString();
+    if (originalPrice !== undefined) updates.originalPrice = originalPrice ? originalPrice.toString() : null;
+    if (badge !== undefined) updates.badge = badge || null;
     if (description !== undefined) updates.description = description;
-    if (stock !== undefined) updates.stock = stock;
+    if (stock !== undefined) updates.stock = parseInt(stock);
     if (isActive !== undefined) updates.isActive = isActive;
+    if (sizes !== undefined) updates.sizes = sizes;
+    if (colors !== undefined) updates.colors = colors;
+    if (imageUrl !== undefined) updates.imageUrl = imageUrl || null;
     updates.updatedAt = new Date();
 
     const [updated] = await db.update(productsTable).set(updates).where(eq(productsTable.id, id)).returning();
@@ -93,6 +142,17 @@ router.put("/admin/products/:id", verifyAdmin, async (req, res) => {
   } catch (err) {
     req.log.error(err);
     res.status(500).json({ error: "Failed to update product" });
+  }
+});
+
+router.delete("/admin/products/:id", verifyAdmin, async (req, res) => {
+  const id = parseInt(req.params.id);
+  try {
+    await db.delete(productsTable).where(eq(productsTable.id, id));
+    res.json({ success: true });
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Failed to delete product" });
   }
 });
 

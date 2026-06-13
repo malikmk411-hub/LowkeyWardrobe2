@@ -3,10 +3,11 @@ import { useRoute } from 'wouter';
 import { useGetProduct } from '@workspace/api-client-react';
 import { products as hardcodedProducts, Product } from '../data/products';
 import { FigureSVG } from '../components/FigureSVG';
+import { SizeGuideModal } from '../components/SizeGuideModal';
 import { useCartStore } from '../stores/cartStore';
 import { useWishlistStore } from '../stores/wishlistStore';
 import { useUIStore } from '../stores/uiStore';
-import { Heart, ChevronRight, ChevronLeft } from 'lucide-react';
+import { Heart, ChevronRight, ZoomIn, X } from 'lucide-react';
 import { Link } from 'wouter';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -15,12 +16,13 @@ export default function ProductDetail() {
   const slug = params?.slug;
 
   const { data: apiProduct, isLoading } = useGetProduct(slug || '', { query: { enabled: !!slug } });
-  
-  const product: Product | undefined = apiProduct || hardcodedProducts.find(p => p.slug === slug);
+  const product: Product | undefined = (apiProduct as any) || hardcodedProducts.find(p => p.slug === slug);
 
   const [activeSize, setActiveSize] = useState<string>('');
   const [activeColor, setActiveColor] = useState<string>('');
-  
+  const [zoomed, setZoomed] = useState(false);
+  const [sizeGuideOpen, setSizeGuideOpen] = useState(false);
+
   const { addItem } = useCartStore();
   const { toggle, isInWishlist } = useWishlistStore();
   const { showToast } = useUIStore();
@@ -32,6 +34,12 @@ export default function ProductDetail() {
       window.scrollTo(0, 0);
     }
   }, [product]);
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => e.key === 'Escape' && setZoomed(false);
+    if (zoomed) window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [zoomed]);
 
   if (isLoading && !product) {
     return (
@@ -55,12 +63,11 @@ export default function ProductDetail() {
   }
 
   const isWishlisted = isInWishlist(product.id);
+  const isSoldOut = product.stock === 0;
 
   const handleAdd = () => {
-    if (!activeSize) {
-      showToast("Please select a size");
-      return;
-    }
+    if (!activeSize) { showToast("Please select a size"); return; }
+    if (isSoldOut) { showToast("This product is sold out"); return; }
     addItem(product, activeSize, activeColor);
   };
 
@@ -69,47 +76,137 @@ export default function ProductDetail() {
     showToast(isWishlisted ? `Removed from wishlist` : `Added to wishlist`);
   };
 
+  const discountPct = product.originalPrice
+    ? Math.round((1 - Number(product.price) / Number(product.originalPrice)) * 100)
+    : null;
+
+  const ImageArea = () => (
+    <div
+      className="w-full max-w-[500px] aspect-[3/4] relative z-10 cursor-zoom-in group/img"
+      onClick={() => setZoomed(true)}
+    >
+      {product.imageUrl ? (
+        <img
+          src={product.imageUrl}
+          alt={product.name}
+          className="w-full h-full object-cover"
+        />
+      ) : (
+        <FigureSVG
+          figType={product.figType}
+          ca={product.figColorA}
+          cb={product.figColorB}
+          className="w-full h-full"
+        />
+      )}
+      <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/img:opacity-100 transition-opacity duration-200 bg-black/5">
+        <div className="w-10 h-10 bg-white/80 backdrop-blur flex items-center justify-center">
+          <ZoomIn size={18} strokeWidth={1.5} />
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <div className="w-full min-h-[100dvh] pt-[64px] bg-white text-black">
-      
+
+      {/* Zoom Lightbox */}
+      <AnimatePresence>
+        {zoomed && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setZoomed(false)}
+              className="fixed inset-0 bg-black/90 z-[3000] flex items-center justify-center p-8 cursor-zoom-out"
+            >
+              <motion.div
+                initial={{ scale: 0.85, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.85, opacity: 0 }}
+                transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+                className="relative max-w-[600px] w-full max-h-[85vh] flex items-center justify-center"
+                onClick={e => e.stopPropagation()}
+              >
+                {product.imageUrl ? (
+                  <img
+                    src={product.imageUrl}
+                    alt={product.name}
+                    className="w-full h-full object-contain max-h-[85vh]"
+                  />
+                ) : (
+                  <div className="w-full aspect-[3/4]">
+                    <FigureSVG
+                      figType={product.figType}
+                      ca={product.figColorA}
+                      cb={product.figColorB}
+                      className="w-full h-full"
+                    />
+                  </div>
+                )}
+              </motion.div>
+              <button
+                onClick={() => setZoomed(false)}
+                className="absolute top-6 right-6 w-10 h-10 bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
+              >
+                <X size={20} strokeWidth={1.5} className="text-white" />
+              </button>
+              <p className="absolute bottom-6 left-1/2 -translate-x-1/2 text-white/40 text-[11px] uppercase tracking-[0.2em]">
+                Click or press Esc to close
+              </p>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Size Guide Modal */}
+      <SizeGuideModal open={sizeGuideOpen} onClose={() => setSizeGuideOpen(false)} category={product.category} />
+
       {/* Breadcrumb */}
       <div className="px-8 py-6 max-w-[1600px] mx-auto flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] text-[#999999]">
         <Link href="/"><span className="hover:text-black transition-colors cursor-pointer">Home</span></Link>
         <ChevronRight size={10} />
         <Link href={`/products?category=${product.category}`}>
-          <span className="hover:text-black transition-colors cursor-pointer">{product.category}</span>
+          <span className="hover:text-black transition-colors cursor-pointer capitalize">{product.category}</span>
         </Link>
         <ChevronRight size={10} />
         <span className="text-black">{product.name}</span>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 max-w-[1600px] mx-auto min-h-[calc(100vh-140px)]">
-        
+
         {/* Left: Visuals */}
-        <div className="p-8 md:p-12 lg:p-20 flex flex-col items-center justify-center bg-[#FAFAFA] relative">
-          <div className="absolute inset-0" style={{ background: product.bgGradient, opacity: 0.5 }} />
-          
-          <motion.div 
+        <div className="p-8 md:p-12 lg:p-20 flex flex-col items-center justify-center bg-[#F5F5F5] relative overflow-hidden">
+          {!product.imageUrl && (
+            <div className="absolute inset-0" style={{ background: product.bgGradient, opacity: 0.6 }} />
+          )}
+
+          <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.8, ease: [0.4, 0, 0.2, 1] }}
-            className="w-full max-w-[500px] aspect-[3/4] relative z-10"
+            className="relative z-10"
           >
-            <FigureSVG 
-              figType={product.figType} 
-              ca={product.figColorA} 
-              cb={product.figColorB} 
-              className="w-full h-full"
-            />
+            <ImageArea />
           </motion.div>
-          
-          {product.badge && (
-            <div className="absolute top-12 left-12 z-20">
-              <span className={`px-3 py-1.5 text-[10px] uppercase tracking-[0.15em] text-white ${product.badge === 'sale' ? 'bg-[#C41E1E]' : 'bg-black'}`}>
+
+          {/* Badges */}
+          <div className="absolute top-12 left-12 z-20 flex flex-col gap-2">
+            {isSoldOut && (
+              <span className="px-3 py-1.5 text-[10px] uppercase tracking-[0.15em] text-white bg-black">Sold Out</span>
+            )}
+            {!isSoldOut && product.badge && (
+              <span className="px-3 py-1.5 text-[10px] uppercase tracking-[0.15em] text-white bg-black">
                 {product.badge === 'new' ? 'New Arrival' : 'Sale'}
               </span>
-            </div>
-          )}
+            )}
+            {discountPct && (
+              <span className="px-3 py-1.5 text-[10px] uppercase tracking-[0.15em] text-white bg-black">
+                -{discountPct}%
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Right: Info */}
@@ -117,14 +214,17 @@ export default function ProductDetail() {
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
             <p className="text-[11px] uppercase tracking-[0.2em] text-[#999999] mb-4">{product.brand}</p>
             <h1 className="font-serif text-[clamp(32px,3.5vw,48px)] leading-[1.1] font-light italic mb-6">{product.name}</h1>
-            
+
             <div className="flex items-center gap-4 mb-10">
               {product.originalPrice && (
-                <span className="text-[18px] text-[#999999] line-through">${product.originalPrice}</span>
+                <span className="text-[18px] text-[#999999] line-through">PKR {Number(product.originalPrice).toLocaleString()}</span>
               )}
-              <span className={`text-[20px] font-medium ${product.badge === 'sale' ? 'text-[#C41E1E]' : 'text-black'}`}>
-                ${product.price}
+              <span className="text-[20px] font-medium text-black">
+                PKR {Number(product.price).toLocaleString()}
               </span>
+              {discountPct && (
+                <span className="text-[12px] border border-black px-2 py-0.5 uppercase tracking-[0.1em]">Save {discountPct}%</span>
+              )}
             </div>
 
             <p className="text-[14px] font-light leading-[1.8] text-[#333333] mb-12">
@@ -132,58 +232,75 @@ export default function ProductDetail() {
             </p>
 
             {/* Colors */}
-            <div className="mb-10">
-              <p className="text-[11px] uppercase tracking-[0.2em] mb-4">Color</p>
-              <div className="flex gap-3">
-                {product.colors.map(color => (
-                  <button
-                    key={color}
-                    onClick={() => setActiveColor(color)}
-                    className={`w-8 h-8 rounded-full border flex items-center justify-center transition-all ${
-                      activeColor === color ? 'border-black' : 'border-transparent hover:border-[#EAEAEA]'
-                    }`}
-                  >
-                    <span 
-                      className="w-6 h-6 rounded-full border border-[#EAEAEA]"
-                      style={{ backgroundColor: color }}
-                    />
-                  </button>
-                ))}
+            {product.colors.length > 0 && (
+              <div className="mb-10">
+                <p className="text-[11px] uppercase tracking-[0.2em] mb-4">Color</p>
+                <div className="flex gap-3">
+                  {product.colors.map(color => (
+                    <button
+                      key={color}
+                      onClick={() => setActiveColor(color)}
+                      className={`w-8 h-8 rounded-full border flex items-center justify-center transition-all ${
+                        activeColor === color ? 'border-black' : 'border-transparent hover:border-[#EAEAEA]'
+                      }`}
+                    >
+                      <span
+                        className="w-6 h-6 rounded-full border border-[#EAEAEA]"
+                        style={{ backgroundColor: color }}
+                      />
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Sizes */}
-            <div className="mb-12">
-              <div className="flex justify-between items-center mb-4">
-                <p className="text-[11px] uppercase tracking-[0.2em]">Size</p>
-                <button className="text-[10px] text-[#999999] underline underline-offset-4 hover:text-black">Size Guide</button>
-              </div>
-              <div className="grid grid-cols-4 sm:grid-cols-5 gap-3">
-                {product.sizes.map(size => (
+            {product.sizes.length > 0 && (
+              <div className="mb-12">
+                <div className="flex justify-between items-center mb-4">
+                  <p className="text-[11px] uppercase tracking-[0.2em]">Size</p>
                   <button
-                    key={size}
-                    onClick={() => setActiveSize(size)}
-                    className={`py-3 text-[12px] border transition-colors ${
-                      activeSize === size 
-                        ? 'border-black bg-black text-white' 
-                        : 'border-[#EAEAEA] text-black hover:border-black'
-                    }`}
+                    onClick={() => setSizeGuideOpen(true)}
+                    className="text-[10px] text-[#999999] underline underline-offset-4 hover:text-black transition-colors"
                   >
-                    {size}
+                    Size Guide
                   </button>
-                ))}
+                </div>
+                <div className="grid grid-cols-4 sm:grid-cols-5 gap-3">
+                  {product.sizes.map(size => (
+                    <button
+                      key={size}
+                      onClick={() => setActiveSize(size)}
+                      disabled={isSoldOut}
+                      className={`py-3 text-[12px] border transition-colors ${
+                        isSoldOut
+                          ? 'border-[#EAEAEA] text-[#EAEAEA] cursor-not-allowed line-through'
+                          : activeSize === size
+                          ? 'border-black bg-black text-white'
+                          : 'border-[#EAEAEA] text-black hover:border-black'
+                      }`}
+                    >
+                      {size}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Actions */}
             <div className="flex gap-4 mb-10">
-              <button 
+              <button
                 onClick={handleAdd}
-                className="flex-1 bg-black text-white py-4 text-[11px] uppercase tracking-[0.15em] hover:bg-[#333333] transition-colors"
+                disabled={isSoldOut}
+                className={`flex-1 py-4 text-[11px] uppercase tracking-[0.15em] transition-colors ${
+                  isSoldOut
+                    ? 'bg-[#EAEAEA] text-[#999999] cursor-not-allowed'
+                    : 'bg-black text-white hover:bg-[#333333]'
+                }`}
               >
-                Add to Bag
+                {isSoldOut ? 'Sold Out' : 'Add to Bag'}
               </button>
-              <button 
+              <button
                 onClick={handleWishlist}
                 className={`w-14 flex items-center justify-center border transition-colors ${
                   isWishlisted ? 'border-black bg-black text-white' : 'border-[#EAEAEA] hover:border-black'
@@ -196,7 +313,7 @@ export default function ProductDetail() {
             <div className="space-y-4 border-t border-[#EAEAEA] pt-8 text-[12px] font-light text-[#666666]">
               <div className="flex items-center gap-3">
                 <div className="w-1.5 h-1.5 rounded-full bg-black"></div>
-                <p>Free complimentary shipping on orders over $250</p>
+                <p>Free complimentary shipping on orders over PKR 50,000</p>
               </div>
               <div className="flex items-center gap-3">
                 <div className="w-1.5 h-1.5 rounded-full bg-black"></div>
@@ -206,6 +323,12 @@ export default function ProductDetail() {
                 <div className="w-1.5 h-1.5 rounded-full bg-black"></div>
                 <p>SKU: {product.sku}</p>
               </div>
+              {product.stock > 0 && product.stock <= 5 && (
+                <div className="flex items-center gap-3">
+                  <div className="w-1.5 h-1.5 rounded-full bg-black"></div>
+                  <p className="font-medium">Only {product.stock} left in stock</p>
+                </div>
+              )}
             </div>
           </motion.div>
         </div>

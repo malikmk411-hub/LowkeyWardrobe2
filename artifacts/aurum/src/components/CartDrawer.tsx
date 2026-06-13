@@ -4,10 +4,14 @@ import { FigureSVG } from './FigureSVG';
 import { X, Minus, Plus, ShoppingBag } from 'lucide-react';
 import { Link } from 'wouter';
 
+const FREE_SHIPPING_THRESHOLD = 50000;
+
 export function CartDrawer() {
   const { items, isOpen, closeCart, updateQty, removeItem, total, shipping } = useCartStore();
   const subtotal = total();
   const ship = shipping();
+
+  const fmt = (n: number) => `PKR ${n.toLocaleString()}`;
 
   return (
     <AnimatePresence>
@@ -42,13 +46,13 @@ export function CartDrawer() {
             </div>
 
             {/* Free shipping progress */}
-            {subtotal < 250 && subtotal > 0 && (
-              <div className="px-7 py-3 bg-[#FAFAFA] border-b border-[#EAEAEA]">
+            {subtotal < FREE_SHIPPING_THRESHOLD && subtotal > 0 && (
+              <div className="px-7 py-3 bg-[#F5F5F5] border-b border-[#EAEAEA]">
                 <div className="w-full bg-[#EAEAEA] h-[2px] mb-2">
-                  <div className="bg-black h-[2px] transition-all duration-700" style={{ width: `${Math.min((subtotal / 250) * 100, 100)}%` }} />
+                  <div className="bg-black h-[2px] transition-all duration-700" style={{ width: `${Math.min((subtotal / FREE_SHIPPING_THRESHOLD) * 100, 100)}%` }} />
                 </div>
                 <p className="text-[11px] text-[#666666]">
-                  Add <strong>${(250 - subtotal).toFixed(0)}</strong> for free shipping
+                  Add <strong>PKR {(FREE_SHIPPING_THRESHOLD - subtotal).toLocaleString()}</strong> for free shipping
                 </p>
               </div>
             )}
@@ -71,14 +75,20 @@ export function CartDrawer() {
                 <div className="flex flex-col divide-y divide-[#F5F5F5]">
                   {items.map((item) => (
                     <div key={item.id} className="flex gap-4 py-5">
-                      <div className="w-[72px] h-[90px] relative overflow-hidden shrink-0">
-                        <div className="absolute inset-0" style={{ background: item.bgGradient }} />
-                        <FigureSVG
-                          figType={item.figType}
-                          ca={item.figColorA}
-                          cb={item.figColorB}
-                          className="w-full h-full absolute inset-0"
-                        />
+                      <div className="w-[72px] h-[90px] relative overflow-hidden shrink-0 bg-[#F0F0F0]">
+                        {item.imageUrl ? (
+                          <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <>
+                            <div className="absolute inset-0" style={{ background: item.bgGradient }} />
+                            <FigureSVG
+                              figType={item.figType}
+                              ca={item.figColorA}
+                              cb={item.figColorB}
+                              className="w-full h-full absolute inset-0"
+                            />
+                          </>
+                        )}
                       </div>
                       <div className="flex-1 flex flex-col justify-between min-w-0">
                         <div>
@@ -87,7 +97,7 @@ export function CartDrawer() {
                               <p className="text-[9px] uppercase tracking-[0.2em] text-[#999999] mb-0.5">{item.brand}</p>
                               <p className="text-[13px] leading-tight truncate">{item.name}</p>
                             </div>
-                            <p className="text-[13px] shrink-0">${(item.price * item.quantity).toFixed(2)}</p>
+                            <p className="text-[13px] shrink-0">PKR {(item.price * item.quantity).toLocaleString()}</p>
                           </div>
                           <div className="flex items-center gap-2 mt-1">
                             <p className="text-[11px] text-[#999999]">Size: {item.size}</p>
@@ -128,17 +138,17 @@ export function CartDrawer() {
                 <div className="space-y-2 mb-5">
                   <div className="flex justify-between text-[13px] text-[#666666]">
                     <span>Subtotal</span>
-                    <span className="text-black">${subtotal.toFixed(2)}</span>
+                    <span className="text-black">{fmt(subtotal)}</span>
                   </div>
                   <div className="flex justify-between text-[13px] text-[#666666]">
                     <span>Shipping</span>
-                    <span className={ship === 0 ? 'text-green-600' : 'text-black'}>
-                      {ship === 0 ? 'Complimentary' : `$${ship.toFixed(2)}`}
+                    <span className="text-black">
+                      {ship === 0 ? 'Complimentary' : fmt(ship)}
                     </span>
                   </div>
                   <div className="flex justify-between text-[15px] font-medium pt-3 border-t border-[#EAEAEA]">
                     <span>Total</span>
-                    <span>${(subtotal + ship).toFixed(2)}</span>
+                    <span>{fmt(subtotal + ship)}</span>
                   </div>
                 </div>
                 <div className="flex flex-col gap-2.5">

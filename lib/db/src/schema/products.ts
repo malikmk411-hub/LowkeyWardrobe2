@@ -18,11 +18,13 @@ export const productsTable = pgTable("products", {
   bgGradient: text("bg_gradient").notNull(),
   figColorA: text("fig_color_a").notNull(),
   figColorB: text("fig_color_b").notNull(),
+  imageUrl: text("image_url"),
   sku: text("sku").notNull().unique(),
   stock: integer("stock").notNull().default(0),
   tags: text("tags").array().notNull().default([]),
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }),
 });
 
 export const insertProductSchema = createInsertSchema(productsTable).omit({ id: true, createdAt: true });

@@ -27,7 +27,7 @@ export default function Checkout() {
   const [orderNumber, setOrderNumber] = useState('');
   const [form, setForm] = useState<FormData>({
     email: '', firstName: '', lastName: '', address: '', city: '',
-    country: 'United States', zip: '', cardNumber: '', cardExpiry: '', cardCvc: '', cardName: ''
+    country: 'Pakistan', zip: '', cardNumber: '', cardExpiry: '', cardCvc: '', cardName: ''
   });
 
   const subtotal = total();
@@ -287,7 +287,7 @@ export default function Checkout() {
                 {loading ? (
                   <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Processing...</>
                 ) : (
-                  <>Place Order — ${grandTotal.toFixed(2)}</>
+                  <>Place Order — PKR {grandTotal.toLocaleString()}</>
                 )}
               </button>
             </motion.div>
@@ -312,7 +312,7 @@ export default function Checkout() {
                     <p className="text-[13px] leading-tight">{item.name}</p>
                     <p className="text-[11px] text-[#999999] mt-0.5">Size: {item.size}</p>
                   </div>
-                  <p className="text-[14px]">${(item.price * item.quantity).toFixed(2)}</p>
+                  <p className="text-[14px]">PKR {(item.price * item.quantity).toLocaleString()}</p>
                 </div>
               </div>
             ))}
@@ -320,20 +320,20 @@ export default function Checkout() {
           <div className="border-t border-[#EAEAEA] pt-6 space-y-3">
             <div className="flex justify-between text-[13px]">
               <span className="text-[#666666]">Subtotal</span>
-              <span>${subtotal.toFixed(2)}</span>
+              <span>PKR {subtotal.toLocaleString()}</span>
             </div>
             <div className="flex justify-between text-[13px]">
               <span className="text-[#666666]">Shipping</span>
-              <span>{ship === 0 ? 'Complimentary' : `$${ship.toFixed(2)}`}</span>
+              <span>{ship === 0 ? 'Complimentary' : `PKR ${ship.toLocaleString()}`}</span>
             </div>
             <div className="flex justify-between text-[16px] font-medium border-t border-[#EAEAEA] pt-4 mt-2">
               <span>Total</span>
-              <span>${grandTotal.toFixed(2)}</span>
+              <span>PKR {grandTotal.toLocaleString()}</span>
             </div>
           </div>
-          {subtotal < 250 && (
+          {subtotal < 50000 && (
             <p className="text-[11px] text-[#999999] mt-4 leading-[1.6]">
-              Add ${(250 - subtotal).toFixed(0)} more for complimentary shipping.
+              Add PKR {(50000 - subtotal).toLocaleString()} more for complimentary shipping.
             </p>
           )}
         </div>

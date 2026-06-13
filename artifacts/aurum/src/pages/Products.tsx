@@ -10,7 +10,7 @@ export default function Products() {
   const [activeCategory, setActiveCategory] = useState('all');
   const [sortBy, setSortBy] = useState('featured');
   const [sortOpen, setSortOpen] = useState(false);
-  const [priceRange, setPriceRange] = useState<[number, number]>([0, 2000]);
+  const [priceRange, setPriceRange] = useState<[number, number]>([0, 100000]);
   const [filtersOpen, setFiltersOpen] = useState(false);
 
   // Read category from URL search params
@@ -30,7 +30,7 @@ export default function Products() {
   });
 
   // Price filter
-  filtered = filtered.filter(p => p.price >= priceRange[0] && p.price <= priceRange[1]);
+  filtered = filtered.filter(p => Number(p.price) >= priceRange[0] && Number(p.price) <= priceRange[1]);
 
   // Sort
   const sorted = [...filtered].sort((a, b) => {
@@ -87,7 +87,7 @@ export default function Products() {
                 }}
                 className={`text-[11px] uppercase tracking-[0.15em] whitespace-nowrap transition-colors relative pb-4 ${
                   activeCategory === cat.id ? 'text-black' : 'text-[#999999] hover:text-black'
-                } ${cat.id === 'sale' ? 'text-[#C41E1E]' : ''}`}
+                } ${cat.id === 'sale' ? 'text-black' : ''}`}
               >
                 {cat.label}
                 {activeCategory === cat.id && (
@@ -144,26 +144,26 @@ export default function Products() {
             <div className="flex flex-col sm:flex-row gap-8">
               <div className="flex-1">
                 <p className="text-[10px] uppercase tracking-[0.2em] mb-4">
-                  Price Range: ${priceRange[0]} – ${priceRange[1]}
+                  Price Range: PKR {priceRange[0].toLocaleString()} – PKR {priceRange[1].toLocaleString()}
                 </p>
                 <input
                   type="range"
                   min={0}
-                  max={2000}
-                  step={50}
+                  max={100000}
+                  step={1000}
                   value={priceRange[1]}
                   onChange={e => setPriceRange([priceRange[0], parseInt(e.target.value)])}
                   className="w-full accent-black"
                 />
                 <div className="flex justify-between text-[11px] text-[#999999] mt-1">
-                  <span>$0</span>
-                  <span>$2,000+</span>
+                  <span>PKR 0</span>
+                  <span>PKR 100,000+</span>
                 </div>
               </div>
               <div>
                 <p className="text-[10px] uppercase tracking-[0.2em] mb-4">Quick Reset</p>
                 <button
-                  onClick={() => { setPriceRange([0, 2000]); setActiveCategory('all'); setSortBy('featured'); }}
+                  onClick={() => { setPriceRange([0, 100000]); setActiveCategory('all'); setSortBy('featured'); }}
                   className="border border-[#EAEAEA] px-4 py-2 text-[11px] uppercase tracking-[0.1em] hover:border-black transition-colors"
                 >
                   Clear All Filters

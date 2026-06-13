@@ -14,6 +14,7 @@ export interface CartItem {
   bgGradient: string;
   figColorA: string;
   figColorB: string;
+  imageUrl?: string;
   quantity: number;
   sku: string;
 }
@@ -61,6 +62,7 @@ export const useCartStore = create<CartStore>()(
             bgGradient: product.bgGradient,
             figColorA: product.figColorA,
             figColorB: product.figColorB,
+            imageUrl: product.imageUrl,
             quantity: 1,
             sku: product.sku,
           };
@@ -98,11 +100,11 @@ export const useCartStore = create<CartStore>()(
       },
       shipping: () => {
         const { total } = get();
-        return total() >= 250 ? 0 : 25;
+        return total() >= 50000 ? 0 : 1500;
       },
     }),
     {
-      name: 'aurum-cart',
+      name: 'lowkey-cart',
     }
   )
 );

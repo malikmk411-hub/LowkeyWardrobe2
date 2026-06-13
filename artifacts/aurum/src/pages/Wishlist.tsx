@@ -85,7 +85,7 @@ export default function Wishlist() {
                       />
                       {product.badge && (
                         <div className="absolute top-4 left-4">
-                          <span className={`px-2.5 py-1 text-[9px] uppercase tracking-[0.15em] text-white ${product.badge === 'sale' ? 'bg-[#C41E1E]' : 'bg-black'}`}>
+                          <span className={`px-2.5 py-1 text-[9px] uppercase tracking-[0.15em] text-white ${product.badge === 'sale' ? 'bg-black' : 'bg-black'}`}>
                             {product.badge === 'new' ? 'New' : 'Sale'}
                           </span>
                         </div>
@@ -102,10 +102,10 @@ export default function Wishlist() {
                     </Link>
                     <div className="flex items-center gap-3 mb-4">
                       {product.originalPrice && (
-                        <span className="text-[13px] text-[#999999] line-through">${product.originalPrice}</span>
+                        <span className="text-[13px] text-[#999999] line-through">PKR {Number(product.originalPrice).toLocaleString()}</span>
                       )}
-                      <span className={`text-[15px] font-medium ${product.badge === 'sale' ? 'text-[#C41E1E]' : ''}`}>
-                        ${product.price}
+                      <span className="text-[15px] font-medium text-black">
+                        PKR {Number(product.price).toLocaleString()}
                       </span>
                     </div>
 
