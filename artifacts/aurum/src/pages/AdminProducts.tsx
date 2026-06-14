@@ -1,7 +1,8 @@
 import { useEffect, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AdminLayout, adminFetch } from '../components/AdminLayout';
-import { Search, Plus, Edit2, Trash2, Eye, EyeOff, X, Check, Package, Star, ImagePlus } from 'lucide-react';
+import { Search, Plus, Edit2, Trash2, Eye, EyeOff, X, Check, Package, Star, ImagePlus, Upload, Link2 } from 'lucide-react';
+import { useUpload } from '@workspace/object-storage-web';
 
 interface AdminProduct {
   id: number;
@@ -66,7 +67,20 @@ export default function AdminProducts() {
   const [form, setForm] = useState<FormState>(DEFAULT_FORM);
   const [newColor, setNewColor] = useState('#000000');
   const [newImageUrl, setNewImageUrl] = useState('');
+  const [imageInputMode, setImageInputMode] = useState<'url' | 'file'>('file');
   const colorInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const { uploadFile, isUploading, progress } = useUpload({
+    basePath: '/api/storage',
+    onSuccess: (res) => {
+      const servedUrl = `/api/storage${res.objectPath}`;
+      setForm(prev => ({ ...prev, images: [...prev.images, servedUrl] }));
+    },
+    onError: (err) => {
+      console.error('Upload failed:', err);
+    },
+  });
 
   useEffect(() => { loadProducts(); }, []);
 
@@ -607,52 +621,115 @@ export default function AdminProducts() {
                 {/* Images */}
                 <section>
                   <h3 className="text-[10px] uppercase tracking-[0.2em] text-[#999999] mb-4">Product Images</h3>
-                  <p className="text-[11px] text-[#AAAAAA] mb-4">First image is shown as the primary product image. Add multiple for gallery view.</p>
+                  <p className="text-[11px] text-[#AAAAAA] mb-4">First image is the primary. Add multiple images for a product gallery.</p>
 
-                  <div className="space-y-3 mb-4">
+                  {/* Image list */}
+                  <div className="space-y-2 mb-5">
                     {form.images.map((imgUrl, idx) => (
-                      <div key={idx} className="flex items-start gap-3 p-3 border border-[#EAEAEA] bg-[#FAFAFA]">
-                        <div className="w-12 h-14 bg-[#EAEAEA] overflow-hidden shrink-0">
-                          <img src={imgUrl} alt={`Image ${idx + 1}`} className="w-full h-full object-cover" onError={e => { (e.target as HTMLImageElement).src = ''; }} />
+                      <div key={idx} className="flex items-center gap-3 p-3 border border-[#EAEAEA] bg-[#FAFAFA] group/img">
+                        <div className="w-10 h-12 bg-[#EAEAEA] overflow-hidden shrink-0 border border-[#E0E0E0]">
+                          <img src={imgUrl} alt={`Image ${idx + 1}`} className="w-full h-full object-cover" onError={e => { (e.target as HTMLImageElement).style.opacity = '0.3'; }} />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-[10px] uppercase tracking-[0.1em] text-[#999] mb-1">{idx === 0 ? 'Primary' : `Image ${idx + 1}`}</p>
+                          <p className="text-[9px] uppercase tracking-[0.15em] text-[#AAAAAA] mb-0.5">{idx === 0 ? 'Primary Image' : `Image ${idx + 1}`}</p>
                           <p className="text-[11px] text-[#666] truncate">{imgUrl}</p>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => removeImage(imgUrl)}
-                          className="w-7 h-7 flex items-center justify-center border border-[#EAEAEA] hover:border-black transition-colors shrink-0"
-                        >
+                        <button type="button" onClick={() => removeImage(imgUrl)} className="w-7 h-7 flex items-center justify-center border border-transparent group-hover/img:border-[#EAEAEA] hover:border-black! transition-colors shrink-0 text-[#AAAAAA] hover:text-black">
                           <X size={11} />
                         </button>
                       </div>
                     ))}
-                    {form.images.length === 0 && (
-                      <div className="flex items-center justify-center h-20 border border-dashed border-[#EAEAEA] text-[#AAAAAA] text-[12px]">
-                        No images added yet
+                    {form.images.length === 0 && !isUploading && (
+                      <div className="flex flex-col items-center justify-center h-24 border border-dashed border-[#DDDDDD] bg-[#FAFAFA] text-[#CCCCCC]">
+                        <ImagePlus size={20} strokeWidth={1} className="mb-2" />
+                        <span className="text-[11px]">No images yet</span>
+                      </div>
+                    )}
+                    {/* Upload progress */}
+                    {isUploading && (
+                      <div className="p-4 border border-[#EAEAEA] bg-[#FAFAFA]">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-[11px] uppercase tracking-[0.1em] text-[#666]">Uploading…</span>
+                          <span className="text-[11px] text-[#999]">{progress}%</span>
+                        </div>
+                        <div className="h-[2px] bg-[#EAEAEA] overflow-hidden">
+                          <div className="h-full bg-black transition-all duration-300" style={{ width: `${progress}%` }} />
+                        </div>
                       </div>
                     )}
                   </div>
 
-                  <div className="flex gap-2">
-                    <input
-                      type="url"
-                      value={newImageUrl}
-                      onChange={e => setNewImageUrl(e.target.value)}
-                      onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addImage(); } }}
-                      placeholder="https://example.com/image.jpg"
-                      className="flex-1 border border-[#EAEAEA] px-4 py-3 text-[13px] focus:border-black outline-none transition-colors"
-                    />
+                  {/* Input mode toggle */}
+                  <div className="flex border border-[#EAEAEA] mb-3 overflow-hidden">
                     <button
                       type="button"
-                      onClick={addImage}
-                      className="flex items-center gap-2 px-4 py-3 border border-[#EAEAEA] text-[11px] uppercase tracking-[0.1em] hover:border-black transition-colors"
+                      onClick={() => setImageInputMode('file')}
+                      className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-[10px] uppercase tracking-[0.15em] transition-colors ${imageInputMode === 'file' ? 'bg-black text-white' : 'hover:bg-[#F5F5F5] text-[#666]'}`}
                     >
-                      <ImagePlus size={14} />
-                      Add
+                      <Upload size={12} />
+                      From Device
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setImageInputMode('url')}
+                      className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-[10px] uppercase tracking-[0.15em] transition-colors ${imageInputMode === 'url' ? 'bg-black text-white' : 'hover:bg-[#F5F5F5] text-[#666]'}`}
+                    >
+                      <Link2 size={12} />
+                      From URL
                     </button>
                   </div>
+
+                  {/* File picker */}
+                  {imageInputMode === 'file' && (
+                    <div>
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        className="hidden"
+                        onChange={async (e) => {
+                          const files = Array.from(e.target.files || []);
+                          for (const file of files) {
+                            await uploadFile(file);
+                          }
+                          if (fileInputRef.current) fileInputRef.current.value = '';
+                        }}
+                      />
+                      <button
+                        type="button"
+                        disabled={isUploading}
+                        onClick={() => fileInputRef.current?.click()}
+                        className="w-full flex items-center justify-center gap-3 border-2 border-dashed border-[#DDDDDD] py-6 text-[12px] uppercase tracking-[0.15em] text-[#888] hover:border-black hover:text-black transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <Upload size={16} strokeWidth={1.5} />
+                        {isUploading ? `Uploading (${progress}%)…` : 'Click to choose image files'}
+                      </button>
+                      <p className="text-[10px] text-[#BBBBBB] mt-2 text-center">Supports JPG, PNG, WebP · Multiple files allowed</p>
+                    </div>
+                  )}
+
+                  {/* URL input */}
+                  {imageInputMode === 'url' && (
+                    <div className="flex gap-2">
+                      <input
+                        type="url"
+                        value={newImageUrl}
+                        onChange={e => setNewImageUrl(e.target.value)}
+                        onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addImage(); } }}
+                        placeholder="https://example.com/image.jpg"
+                        className="flex-1 border border-[#EAEAEA] px-4 py-3 text-[13px] focus:border-black outline-none transition-colors"
+                      />
+                      <button
+                        type="button"
+                        onClick={addImage}
+                        className="flex items-center gap-2 px-4 py-3 border border-[#EAEAEA] text-[11px] uppercase tracking-[0.1em] hover:border-black transition-colors whitespace-nowrap"
+                      >
+                        <ImagePlus size={14} />
+                        Add URL
+                      </button>
+                    </div>
+                  )}
                 </section>
 
               </div>
