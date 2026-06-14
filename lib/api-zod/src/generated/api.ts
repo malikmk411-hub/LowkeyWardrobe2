@@ -22,6 +22,7 @@ export const HealthCheckResponse = zod.object({
  */
 export const ListProductsQueryParams = zod.object({
   "category": zod.coerce.string().optional(),
+  "subcategory": zod.coerce.string().optional(),
   "badge": zod.coerce.string().optional(),
   "q": zod.coerce.string().optional(),
   "minPrice": zod.coerce.number().optional(),
@@ -37,6 +38,7 @@ export const ListProductsResponseItem = zod.object({
   "price": zod.number(),
   "originalPrice": zod.number().nullish(),
   "category": zod.string(),
+  "subcategory": zod.string().nullish(),
   "badge": zod.string().nullish(),
   "colors": zod.array(zod.string()),
   "sizes": zod.array(zod.string()),
@@ -45,6 +47,9 @@ export const ListProductsResponseItem = zod.object({
   "bgGradient": zod.string(),
   "figColorA": zod.string(),
   "figColorB": zod.string(),
+  "imageUrl": zod.string().nullish(),
+  "images": zod.array(zod.string()).optional(),
+  "featured": zod.boolean().optional(),
   "sku": zod.string(),
   "stock": zod.number(),
   "tags": zod.array(zod.string())
@@ -80,6 +85,7 @@ export const GetProductResponse = zod.object({
   "price": zod.number(),
   "originalPrice": zod.number().nullish(),
   "category": zod.string(),
+  "subcategory": zod.string().nullish(),
   "badge": zod.string().nullish(),
   "colors": zod.array(zod.string()),
   "sizes": zod.array(zod.string()),
@@ -88,6 +94,9 @@ export const GetProductResponse = zod.object({
   "bgGradient": zod.string(),
   "figColorA": zod.string(),
   "figColorB": zod.string(),
+  "imageUrl": zod.string().nullish(),
+  "images": zod.array(zod.string()).optional(),
+  "featured": zod.boolean().optional(),
   "sku": zod.string(),
   "stock": zod.number(),
   "tags": zod.array(zod.string())
@@ -100,5 +109,3 @@ export const GetProductResponse = zod.object({
 export const SubscribeNewsletterBody = zod.object({
   "email": zod.string().email()
 })
-
-

@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AdminLayout, adminFetch } from '../components/AdminLayout';
-import { Search, Plus, Edit2, Trash2, Eye, EyeOff, X, Check, Package } from 'lucide-react';
+import { Search, Plus, Edit2, Trash2, Eye, EyeOff, X, Check, Package, Star, ImagePlus } from 'lucide-react';
 
 interface AdminProduct {
   id: number;
@@ -9,8 +9,9 @@ interface AdminProduct {
   name: string;
   brand: string;
   price: number;
-  originalPrice?: number;
+  originalPrice?: number | null;
   category: string;
+  subcategory?: string | null;
   badge: string | null;
   stock: number;
   description: string;
@@ -18,7 +19,9 @@ interface AdminProduct {
   sku: string;
   sizes: string[];
   colors: string[];
-  imageUrl?: string;
+  imageUrl?: string | null;
+  images?: string[];
+  featured?: boolean;
 }
 
 const SIZE_OPTIONS: Record<string, string[]> = {
@@ -27,10 +30,18 @@ const SIZE_OPTIONS: Record<string, string[]> = {
   accessories: ['One Size'],
 };
 
+const SUBCATEGORY_OPTIONS = [
+  { value: '', label: 'No subcategory' },
+  { value: 'men', label: 'Menswear' },
+  { value: 'women', label: 'Womenswear' },
+  { value: 'unisex', label: 'Unisex' },
+];
+
 const DEFAULT_FORM = {
   name: '',
   brand: '',
   category: 'clothing' as 'clothing' | 'shoes' | 'accessories',
+  subcategory: '',
   price: '' as number | '',
   originalPrice: '' as number | '',
   badge: '' as string,
@@ -38,7 +49,8 @@ const DEFAULT_FORM = {
   sizes: [] as string[],
   colors: [] as string[],
   description: '',
-  imageUrl: '',
+  images: [] as string[],
+  featured: false,
   isActive: true,
 };
 
@@ -53,6 +65,7 @@ export default function AdminProducts() {
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<FormState>(DEFAULT_FORM);
   const [newColor, setNewColor] = useState('#000000');
+  const [newImageUrl, setNewImageUrl] = useState('');
   const colorInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { loadProducts(); }, []);
@@ -73,6 +86,7 @@ export default function AdminProducts() {
 
   const openAdd = () => {
     setForm({ ...DEFAULT_FORM });
+    setNewImageUrl('');
     setModal({ open: true, mode: 'add' });
   };
 
@@ -81,6 +95,7 @@ export default function AdminProducts() {
       name: p.name,
       brand: p.brand,
       category: p.category as 'clothing' | 'shoes' | 'accessories',
+      subcategory: p.subcategory ?? '',
       price: p.price,
       originalPrice: p.originalPrice ?? '',
       badge: p.badge ?? '',
@@ -88,9 +103,11 @@ export default function AdminProducts() {
       sizes: p.sizes ?? [],
       colors: p.colors ?? [],
       description: p.description ?? '',
-      imageUrl: p.imageUrl ?? '',
+      images: p.images && p.images.length > 0 ? p.images : (p.imageUrl ? [p.imageUrl] : []),
+      featured: p.featured ?? false,
       isActive: p.isActive,
     });
+    setNewImageUrl('');
     setModal({ open: true, mode: 'edit', product: p });
   };
 
@@ -115,6 +132,17 @@ export default function AdminProducts() {
   const removeColor = (c: string) =>
     setForm(prev => ({ ...prev, colors: prev.colors.filter(x => x !== c) }));
 
+  const addImage = () => {
+    const url = newImageUrl.trim();
+    if (url && !form.images.includes(url)) {
+      setForm(prev => ({ ...prev, images: [...prev.images, url] }));
+      setNewImageUrl('');
+    }
+  };
+
+  const removeImage = (url: string) =>
+    setForm(prev => ({ ...prev, images: prev.images.filter(img => img !== url) }));
+
   const discountPct = form.originalPrice && form.price
     ? Math.round((1 - Number(form.price) / Number(form.originalPrice)) * 100)
     : null;
@@ -123,10 +151,12 @@ export default function AdminProducts() {
     if (!form.name || !form.price) return;
     setSaving(true);
     try {
+      const imagesList = form.images.filter(Boolean);
       const payload = {
         name: form.name,
         brand: form.brand || 'Lowkey Wardrobe',
         category: form.category,
+        subcategory: form.subcategory || null,
         price: Number(form.price),
         originalPrice: form.originalPrice ? Number(form.originalPrice) : null,
         badge: form.badge || null,
@@ -134,7 +164,9 @@ export default function AdminProducts() {
         sizes: form.sizes,
         colors: form.colors,
         description: form.description,
-        imageUrl: form.imageUrl || null,
+        imageUrl: imagesList[0] || null,
+        images: imagesList,
+        featured: form.featured,
         isActive: form.isActive,
       };
 
@@ -181,13 +213,13 @@ export default function AdminProducts() {
     }
   };
 
-  const markSoldOut = async (p: AdminProduct) => {
+  const toggleFeatured = async (p: AdminProduct) => {
     const res = await adminFetch(`/api/admin/products/${p.id}`, {
       method: 'PUT',
-      body: JSON.stringify({ stock: 0 }),
+      body: JSON.stringify({ featured: !p.featured }),
     });
     if (res.ok) {
-      setProducts(prev => prev.map(pr => pr.id === p.id ? { ...pr, stock: 0 } : pr));
+      setProducts(prev => prev.map(pr => pr.id === p.id ? { ...pr, featured: !p.featured } : pr));
     }
   };
 
@@ -198,145 +230,129 @@ export default function AdminProducts() {
       <div className="space-y-6">
 
         {/* Header */}
-        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-          <div className="relative w-full sm:w-[320px]">
-            <Search size={15} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#BDBDBD]" strokeWidth={1.5} />
+        <div className="flex flex-col sm:flex-row gap-4 sm:items-center justify-between">
+          <div className="relative flex-1 max-w-[400px]">
+            <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#AAAAAA]" strokeWidth={1.5} />
             <input
               type="text"
+              placeholder="Search products, SKU, category…"
               value={search}
               onChange={e => setSearch(e.target.value)}
-              placeholder="Search by name, SKU, category..."
               className="w-full border border-[#EAEAEA] pl-10 pr-4 py-3 text-[13px] focus:border-black outline-none transition-colors bg-white"
             />
           </div>
-          <div className="flex items-center gap-4">
-            <p className="text-[12px] text-[#999999]">{filtered.length} products</p>
-            <button
-              onClick={openAdd}
-              className="flex items-center gap-2 bg-black text-white px-5 py-3 text-[11px] uppercase tracking-[0.15em] hover:bg-[#333333] transition-colors"
-            >
-              <Plus size={14} />
-              Add Product
-            </button>
-          </div>
+          <button
+            onClick={openAdd}
+            className="flex items-center gap-2 bg-black text-white px-6 py-3 text-[11px] uppercase tracking-[0.15em] hover:bg-[#333333] transition-colors"
+          >
+            <Plus size={14} />
+            Add Product
+          </button>
         </div>
 
+        {/* Stats Row */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-[1px] bg-[#EAEAEA]">
+          {[
+            { label: 'Total', value: products.length },
+            { label: 'Active', value: products.filter(p => p.isActive).length },
+            { label: 'Sold Out', value: products.filter(p => p.stock === 0).length },
+            { label: 'Featured', value: products.filter(p => p.featured).length },
+          ].map(({ label, value }) => (
+            <div key={label} className="bg-white px-6 py-4">
+              <div className="text-[24px] font-light mb-1">{value}</div>
+              <div className="text-[10px] uppercase tracking-[0.2em] text-[#999999]">{label}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Table */}
         {loading ? (
-          <div className="flex justify-center py-24">
-            <div className="w-6 h-6 border-2 border-black border-t-transparent rounded-full animate-spin" />
+          <div className="flex items-center justify-center h-64">
+            <div className="w-8 h-8 border-2 border-black border-t-transparent rounded-full animate-spin" />
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="text-center py-24 text-[#999999]">
+            <Package size={36} strokeWidth={1} className="mx-auto mb-4 opacity-30" />
+            <p className="text-[14px]">No products found</p>
           </div>
         ) : (
-          <div className="bg-white border border-[#EAEAEA] overflow-hidden">
+          <div className="border border-[#EAEAEA] overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[800px]">
+              <table className="w-full min-w-[700px]">
                 <thead>
                   <tr className="border-b border-[#EAEAEA] bg-[#FAFAFA]">
-                    {['', 'Product', 'Category', 'Price (PKR)', 'Stock', 'Badge', 'Status', 'Actions'].map(h => (
-                      <th key={h} className="px-5 py-4 text-left text-[10px] uppercase tracking-[0.15em] text-[#999999] font-normal whitespace-nowrap">
-                        {h}
-                      </th>
-                    ))}
+                    <th className="text-left px-6 py-4 text-[10px] uppercase tracking-[0.2em] font-normal text-[#999999]">Product</th>
+                    <th className="text-left px-4 py-4 text-[10px] uppercase tracking-[0.2em] font-normal text-[#999999]">Category</th>
+                    <th className="text-left px-4 py-4 text-[10px] uppercase tracking-[0.2em] font-normal text-[#999999]">Price</th>
+                    <th className="text-left px-4 py-4 text-[10px] uppercase tracking-[0.2em] font-normal text-[#999999]">Stock</th>
+                    <th className="text-left px-4 py-4 text-[10px] uppercase tracking-[0.2em] font-normal text-[#999999]">Status</th>
+                    <th className="px-4 py-4 text-[10px] uppercase tracking-[0.2em] font-normal text-[#999999] text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  <AnimatePresence>
-                    {filtered.map(p => (
-                      <motion.tr
-                        key={p.id}
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className={`border-b border-[#F5F5F5] transition-colors ${!p.isActive ? 'opacity-40' : 'hover:bg-[#FAFAFA]'}`}
-                      >
-                        {/* Thumbnail */}
-                        <td className="px-3 py-3">
-                          <div className="w-10 h-12 bg-[#F0F0F0] shrink-0 overflow-hidden">
-                            {p.imageUrl ? (
-                              <img src={p.imageUrl} alt={p.name} className="w-full h-full object-cover" />
+                  {filtered.map(p => (
+                    <tr key={p.id} className="border-b border-[#EAEAEA] hover:bg-[#FAFAFA] transition-colors">
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-12 bg-[#F5F5F5] overflow-hidden shrink-0">
+                            {(p.images && p.images.length > 0 ? p.images[0] : p.imageUrl) ? (
+                              <img src={p.images && p.images.length > 0 ? p.images[0] : p.imageUrl!} alt="" className="w-full h-full object-cover" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
                             ) : (
-                              <div className="w-full h-full flex items-center justify-center">
-                                <Package size={14} className="text-[#BDBDBD]" strokeWidth={1} />
-                              </div>
+                              <div className="w-full h-full bg-[#EAEAEA]" />
                             )}
                           </div>
-                        </td>
-                        {/* Name */}
-                        <td className="px-5 py-4">
                           <div>
-                            <p className="text-[13px]">{p.name}</p>
-                            <p className="text-[11px] text-[#999999]">{p.brand}</p>
-                            <p className="text-[10px] font-mono text-[#BDBDBD] mt-0.5">{p.sku}</p>
+                            <div className="flex items-center gap-2">
+                              <span className="text-[13px] font-medium line-clamp-1">{p.name}</span>
+                              {p.featured && <Star size={10} fill="currentColor" className="text-black shrink-0" />}
+                            </div>
+                            <span className="text-[11px] text-[#999999]">{p.sku}</span>
+                            {p.subcategory && <span className="text-[10px] text-[#BBBBBB] ml-2 capitalize">{p.subcategory}</span>}
                           </div>
-                        </td>
-                        <td className="px-5 py-4">
-                          <span className="text-[11px] uppercase tracking-[0.1em] text-[#666666] capitalize">{p.category}</span>
-                        </td>
-                        <td className="px-5 py-4 whitespace-nowrap">
-                          <div>
-                            {p.originalPrice && (
-                              <span className="text-[11px] text-[#BDBDBD] line-through block">{Number(p.originalPrice).toLocaleString()}</span>
-                            )}
-                            <span className="text-[13px]">{Number(p.price).toLocaleString()}</span>
-                          </div>
-                        </td>
-                        <td className="px-5 py-4">
-                          <div className="flex items-center gap-2">
-                            <span className={`text-[13px] ${p.stock === 0 ? 'text-[#BDBDBD]' : ''}`}>{p.stock}</span>
-                            {p.stock === 0 && <span className="text-[9px] uppercase tracking-[0.1em] text-[#BDBDBD]">Sold Out</span>}
-                          </div>
-                        </td>
-                        <td className="px-5 py-4">
-                          {p.badge ? (
-                            <span className="px-2 py-0.5 text-[10px] uppercase tracking-[0.1em] text-white bg-black">
-                              {p.badge}
-                            </span>
-                          ) : (
-                            <span className="text-[#BDBDBD] text-[12px]">—</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-4">
+                        <div>
+                          <span className="text-[12px] capitalize">{p.category}</span>
+                          {p.badge && <span className="ml-2 px-1.5 py-0.5 text-[9px] uppercase tracking-[0.1em] bg-[#F0F0F0]">{p.badge}</span>}
+                        </div>
+                      </td>
+                      <td className="px-4 py-4">
+                        <div>
+                          <span className="text-[13px]">PKR {Number(p.price).toLocaleString()}</span>
+                          {p.originalPrice && Number(p.originalPrice) > 0 && (
+                            <span className="text-[11px] text-[#999999] line-through block">PKR {Number(p.originalPrice).toLocaleString()}</span>
                           )}
-                        </td>
-                        <td className="px-5 py-4">
-                          <button onClick={() => toggleActive(p)} className="flex items-center gap-1.5 text-[11px] text-[#999999] hover:text-black transition-colors">
-                            {p.isActive ? <Eye size={14} strokeWidth={1.5} /> : <EyeOff size={14} strokeWidth={1.5} />}
-                            <span>{p.isActive ? 'Live' : 'Hidden'}</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-4">
+                        <span className={`text-[13px] ${p.stock === 0 ? 'text-[#999999]' : 'text-black'}`}>
+                          {p.stock === 0 ? 'Sold Out' : p.stock}
+                        </span>
+                      </td>
+                      <td className="px-4 py-4">
+                        <span className={`px-2 py-1 text-[10px] uppercase tracking-[0.1em] ${p.isActive ? 'bg-black text-white' : 'bg-[#F0F0F0] text-[#999999]'}`}>
+                          {p.isActive ? 'Active' : 'Hidden'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-4">
+                        <div className="flex items-center gap-1 justify-end">
+                          <button onClick={() => toggleFeatured(p)} className={`w-8 h-8 flex items-center justify-center border transition-colors ${p.featured ? 'border-black bg-black text-white' : 'border-[#EAEAEA] hover:border-black'}`} title={p.featured ? 'Unfeature' : 'Feature'}>
+                            <Star size={12} fill={p.featured ? 'currentColor' : 'none'} />
                           </button>
-                        </td>
-                        <td className="px-5 py-4">
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={() => openEdit(p)}
-                              title="Edit product"
-                              className="w-7 h-7 border border-[#EAEAEA] flex items-center justify-center hover:border-black hover:bg-black hover:text-white transition-colors"
-                            >
-                              <Edit2 size={12} />
-                            </button>
-                            {p.stock > 0 && (
-                              <button
-                                onClick={() => markSoldOut(p)}
-                                title="Mark as sold out"
-                                className="w-7 h-7 border border-[#EAEAEA] flex items-center justify-center hover:border-black transition-colors text-[9px] font-medium"
-                              >
-                                0
-                              </button>
-                            )}
-                            <button
-                              onClick={() => setDeleteId(p.id)}
-                              title="Delete product"
-                              className="w-7 h-7 border border-[#EAEAEA] flex items-center justify-center hover:border-black hover:bg-black hover:text-white transition-colors"
-                            >
-                              <Trash2 size={12} />
-                            </button>
-                          </div>
-                        </td>
-                      </motion.tr>
-                    ))}
-                  </AnimatePresence>
-                  {filtered.length === 0 && !loading && (
-                    <tr>
-                      <td colSpan={8} className="px-5 py-16 text-center text-[13px] text-[#999999]">
-                        No products found
+                          <button onClick={() => toggleActive(p)} className="w-8 h-8 flex items-center justify-center border border-[#EAEAEA] hover:border-black transition-colors" title={p.isActive ? 'Hide' : 'Show'}>
+                            {p.isActive ? <EyeOff size={13} strokeWidth={1.5} /> : <Eye size={13} strokeWidth={1.5} />}
+                          </button>
+                          <button onClick={() => openEdit(p)} className="w-8 h-8 flex items-center justify-center border border-[#EAEAEA] hover:border-black transition-colors">
+                            <Edit2 size={13} strokeWidth={1.5} />
+                          </button>
+                          <button onClick={() => setDeleteId(p.id)} className="w-8 h-8 flex items-center justify-center border border-[#EAEAEA] hover:border-red-400 hover:text-red-400 transition-colors">
+                            <Trash2 size={13} strokeWidth={1.5} />
+                          </button>
+                        </div>
                       </td>
                     </tr>
-                  )}
+                  ))}
                 </tbody>
               </table>
             </div>
@@ -354,162 +370,180 @@ export default function AdminProducts() {
               className="fixed inset-0 bg-black/50 z-[1000]"
             />
             <motion.div
-              initial={{ opacity: 0, x: 60 }}
+              initial={{ opacity: 0, x: '100%' }}
               animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 60 }}
-              transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
-              className="fixed top-0 right-0 bottom-0 w-[560px] max-w-[95vw] bg-white z-[1001] flex flex-col shadow-2xl"
+              exit={{ opacity: 0, x: '100%' }}
+              transition={{ type: 'tween', duration: 0.32, ease: [0.4, 0, 0.2, 1] }}
+              className="fixed top-0 right-0 h-full w-full max-w-[600px] bg-white z-[1001] flex flex-col shadow-2xl"
             >
               {/* Modal Header */}
-              <div className="flex items-center justify-between px-8 py-6 border-b border-[#EAEAEA]">
-                <h2 className="font-serif text-[22px] italic font-light">
-                  {modal.mode === 'add' ? 'Add Product' : 'Edit Product'}
-                </h2>
-                <button onClick={closeModal} className="p-1.5 hover:bg-[#F5F5F5] rounded-full">
+              <div className="border-b border-[#EAEAEA] px-8 py-6 flex items-center justify-between shrink-0">
+                <div>
+                  <h2 className="font-serif text-[22px] italic">{modal.mode === 'add' ? 'New Product' : 'Edit Product'}</h2>
+                  {modal.product && <p className="text-[11px] text-[#999999] mt-0.5">{modal.product.sku}</p>}
+                </div>
+                <button onClick={closeModal} className="w-8 h-8 flex items-center justify-center hover:bg-[#F5F5F5] rounded-full transition-colors">
                   <X size={18} strokeWidth={1.5} />
                 </button>
               </div>
 
               {/* Modal Body */}
-              <div className="flex-1 overflow-y-auto px-8 py-6 space-y-8">
+              <div className="flex-1 overflow-y-auto p-8 space-y-8">
 
-                {/* Product Info */}
+                {/* Basic Info */}
                 <section>
-                  <h3 className="text-[10px] uppercase tracking-[0.2em] text-[#999999] mb-4">Product Info</h3>
+                  <h3 className="text-[10px] uppercase tracking-[0.2em] text-[#999999] mb-4">Basic Information</h3>
                   <div className="space-y-4">
                     <div>
-                      <label className="block text-[10px] uppercase tracking-[0.15em] mb-1.5">Name <span className="text-black">*</span></label>
+                      <label className="block text-[10px] uppercase tracking-[0.15em] mb-1.5">Product Name *</label>
                       <input
                         type="text"
                         value={form.name}
                         onChange={e => updateForm('name', e.target.value)}
-                        placeholder="e.g. Oversized Wool Coat"
+                        placeholder="e.g. Premium Oversized Jacket"
                         className="w-full border border-[#EAEAEA] px-4 py-3 text-[13px] focus:border-black outline-none transition-colors"
                       />
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-[10px] uppercase tracking-[0.15em] mb-1.5">Brand</label>
-                        <input
-                          type="text"
-                          value={form.brand}
-                          onChange={e => updateForm('brand', e.target.value)}
-                          placeholder="LKW Essentials"
-                          className="w-full border border-[#EAEAEA] px-4 py-3 text-[13px] focus:border-black outline-none transition-colors"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[10px] uppercase tracking-[0.15em] mb-1.5">Category <span className="text-black">*</span></label>
-                        <select
-                          value={form.category}
-                          onChange={e => {
-                            updateForm('category', e.target.value);
-                            updateForm('sizes', []);
-                          }}
-                          className="w-full border border-[#EAEAEA] px-4 py-3 text-[13px] focus:border-black outline-none transition-colors bg-white"
-                        >
-                          <option value="clothing">Clothing</option>
-                          <option value="shoes">Shoes</option>
-                          <option value="accessories">Accessories</option>
-                        </select>
-                      </div>
+                    <div>
+                      <label className="block text-[10px] uppercase tracking-[0.15em] mb-1.5">Brand</label>
+                      <input
+                        type="text"
+                        value={form.brand}
+                        onChange={e => updateForm('brand', e.target.value)}
+                        placeholder="Lowkey Wardrobe"
+                        className="w-full border border-[#EAEAEA] px-4 py-3 text-[13px] focus:border-black outline-none transition-colors"
+                      />
                     </div>
                     <div>
                       <label className="block text-[10px] uppercase tracking-[0.15em] mb-1.5">Description</label>
                       <textarea
                         value={form.description}
                         onChange={e => updateForm('description', e.target.value)}
-                        placeholder="Describe the product..."
                         rows={3}
+                        placeholder="Product description…"
                         className="w-full border border-[#EAEAEA] px-4 py-3 text-[13px] focus:border-black outline-none transition-colors resize-none"
                       />
                     </div>
                   </div>
                 </section>
 
-                {/* Pricing */}
+                {/* Category & Subcategory */}
                 <section>
-                  <h3 className="text-[10px] uppercase tracking-[0.2em] text-[#999999] mb-4">Pricing (PKR)</h3>
+                  <h3 className="text-[10px] uppercase tracking-[0.2em] text-[#999999] mb-4">Category</h3>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-[10px] uppercase tracking-[0.15em] mb-1.5">Price <span className="text-black">*</span></label>
+                      <label className="block text-[10px] uppercase tracking-[0.15em] mb-1.5">Main Category</label>
+                      <div className="flex gap-2">
+                        {(['clothing', 'shoes', 'accessories'] as const).map(cat => (
+                          <button
+                            key={cat}
+                            type="button"
+                            onClick={() => { updateForm('category', cat); updateForm('sizes', []); }}
+                            className={`flex-1 py-2.5 text-[10px] uppercase tracking-[0.1em] border transition-colors ${form.category === cat ? 'bg-black text-white border-black' : 'border-[#EAEAEA] hover:border-black'}`}
+                          >
+                            {cat}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-[10px] uppercase tracking-[0.15em] mb-1.5">Gender / Audience</label>
+                      <select
+                        value={form.subcategory}
+                        onChange={e => updateForm('subcategory', e.target.value)}
+                        className="w-full border border-[#EAEAEA] px-4 py-3 text-[13px] focus:border-black outline-none transition-colors bg-white"
+                      >
+                        {SUBCATEGORY_OPTIONS.map(opt => (
+                          <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                </section>
+
+                {/* Pricing */}
+                <section>
+                  <h3 className="text-[10px] uppercase tracking-[0.2em] text-[#999999] mb-4">Pricing</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-[10px] uppercase tracking-[0.15em] mb-1.5">Sale Price (PKR) *</label>
                       <input
                         type="number"
                         value={form.price}
-                        onChange={e => updateForm('price', e.target.value ? parseFloat(e.target.value) : '')}
-                        placeholder="e.g. 24900"
+                        onChange={e => updateForm('price', e.target.value ? Number(e.target.value) : '')}
+                        placeholder="24900"
                         className="w-full border border-[#EAEAEA] px-4 py-3 text-[13px] focus:border-black outline-none transition-colors"
                       />
                     </div>
                     <div>
                       <label className="block text-[10px] uppercase tracking-[0.15em] mb-1.5">
-                        Original Price
+                        Original Price (PKR)
                         {discountPct && discountPct > 0 && (
-                          <span className="ml-2 text-black font-medium">(–{discountPct}%)</span>
+                          <span className="ml-2 text-[9px] bg-black text-white px-1.5 py-0.5 rounded-none">–{discountPct}% OFF</span>
                         )}
                       </label>
                       <input
                         type="number"
                         value={form.originalPrice}
-                        onChange={e => updateForm('originalPrice', e.target.value ? parseFloat(e.target.value) : '')}
-                        placeholder="For sale items"
+                        onChange={e => updateForm('originalPrice', e.target.value ? Number(e.target.value) : '')}
+                        placeholder="32900 (optional)"
                         className="w-full border border-[#EAEAEA] px-4 py-3 text-[13px] focus:border-black outline-none transition-colors"
                       />
                     </div>
                   </div>
                 </section>
 
-                {/* Badge & Status */}
+                {/* Stock & Badges */}
                 <section>
-                  <h3 className="text-[10px] uppercase tracking-[0.2em] text-[#999999] mb-4">Badge & Visibility</h3>
+                  <h3 className="text-[10px] uppercase tracking-[0.2em] text-[#999999] mb-4">Inventory & Badges</h3>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-[10px] uppercase tracking-[0.15em] mb-1.5">Badge</label>
-                      <select
-                        value={form.badge}
-                        onChange={e => updateForm('badge', e.target.value)}
-                        className="w-full border border-[#EAEAEA] px-4 py-3 text-[13px] focus:border-black outline-none transition-colors bg-white"
-                      >
-                        <option value="">None</option>
-                        <option value="new">New Arrival</option>
-                        <option value="sale">Sale</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-[10px] uppercase tracking-[0.15em] mb-1.5">Visibility</label>
-                      <button
-                        type="button"
-                        onClick={() => updateForm('isActive', !form.isActive)}
-                        className={`w-full flex items-center justify-center gap-2 py-3 text-[12px] border transition-colors ${form.isActive ? 'border-black bg-black text-white' : 'border-[#EAEAEA] text-[#999999]'}`}
-                      >
-                        {form.isActive ? <Eye size={14} strokeWidth={1.5} /> : <EyeOff size={14} strokeWidth={1.5} />}
-                        {form.isActive ? 'Live' : 'Hidden'}
-                      </button>
-                    </div>
-                  </div>
-                </section>
-
-                {/* Inventory */}
-                <section>
-                  <h3 className="text-[10px] uppercase tracking-[0.2em] text-[#999999] mb-4">Inventory</h3>
-                  <div className="flex gap-4 items-end">
-                    <div className="flex-1">
                       <label className="block text-[10px] uppercase tracking-[0.15em] mb-1.5">Stock Quantity</label>
                       <input
                         type="number"
-                        min="0"
                         value={form.stock}
-                        onChange={e => updateForm('stock', e.target.value ? parseInt(e.target.value) : '')}
+                        onChange={e => updateForm('stock', e.target.value ? Number(e.target.value) : '')}
                         placeholder="0"
                         className="w-full border border-[#EAEAEA] px-4 py-3 text-[13px] focus:border-black outline-none transition-colors"
                       />
                     </div>
+                    <div>
+                      <label className="block text-[10px] uppercase tracking-[0.15em] mb-1.5">Badge</label>
+                      <div className="flex gap-2">
+                        {['', 'new', 'sale'].map(b => (
+                          <button
+                            key={b || 'none'}
+                            type="button"
+                            onClick={() => updateForm('badge', b)}
+                            className={`flex-1 py-3 text-[10px] uppercase tracking-[0.1em] border transition-colors ${form.badge === b ? 'bg-black text-white border-black' : 'border-[#EAEAEA] hover:border-black'}`}
+                          >
+                            {b || 'None'}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </section>
+
+                {/* Featured & Visibility */}
+                <section>
+                  <h3 className="text-[10px] uppercase tracking-[0.2em] text-[#999999] mb-4">Visibility</h3>
+                  <div className="flex gap-3">
                     <button
                       type="button"
-                      onClick={() => updateForm('stock', 0)}
-                      className="px-5 py-3 border border-[#EAEAEA] text-[11px] uppercase tracking-[0.15em] hover:border-black transition-colors whitespace-nowrap"
+                      onClick={() => updateForm('isActive', !form.isActive)}
+                      className={`flex-1 flex items-center justify-center gap-2 border py-3 text-[11px] uppercase tracking-[0.12em] transition-colors ${form.isActive ? 'bg-black text-white border-black' : 'border-[#EAEAEA] hover:border-black'}`}
                     >
-                      Mark Sold Out
+                      {form.isActive ? <Eye size={13} /> : <EyeOff size={13} />}
+                      {form.isActive ? 'Visible in Store' : 'Hidden from Store'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => updateForm('featured', !form.featured)}
+                      className={`flex-1 flex items-center justify-center gap-2 border py-3 text-[11px] uppercase tracking-[0.12em] transition-colors ${form.featured ? 'bg-black text-white border-black' : 'border-[#EAEAEA] hover:border-black'}`}
+                    >
+                      <Star size={13} fill={form.featured ? 'currentColor' : 'none'} />
+                      {form.featured ? 'Featured' : 'Not Featured'}
                     </button>
                   </div>
                 </section>
@@ -517,17 +551,13 @@ export default function AdminProducts() {
                 {/* Sizes */}
                 <section>
                   <h3 className="text-[10px] uppercase tracking-[0.2em] text-[#999999] mb-4">Sizes</h3>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex gap-2 flex-wrap">
                     {sizeOptions.map(size => (
                       <button
                         key={size}
                         type="button"
                         onClick={() => toggleSize(size)}
-                        className={`px-4 py-2 text-[12px] border transition-colors ${
-                          form.sizes.includes(size)
-                            ? 'border-black bg-black text-white'
-                            : 'border-[#EAEAEA] text-black hover:border-black'
-                        }`}
+                        className={`px-4 py-2.5 text-[11px] uppercase tracking-[0.1em] border transition-colors ${form.sizes.includes(size) ? 'bg-black text-white border-black' : 'border-[#EAEAEA] hover:border-black'}`}
                       >
                         {size}
                       </button>
@@ -574,35 +604,61 @@ export default function AdminProducts() {
                   </div>
                 </section>
 
-                {/* Image URL */}
+                {/* Images */}
                 <section>
-                  <h3 className="text-[10px] uppercase tracking-[0.2em] text-[#999999] mb-4">Product Image</h3>
-                  <div>
-                    <label className="block text-[10px] uppercase tracking-[0.15em] mb-1.5">Image URL</label>
+                  <h3 className="text-[10px] uppercase tracking-[0.2em] text-[#999999] mb-4">Product Images</h3>
+                  <p className="text-[11px] text-[#AAAAAA] mb-4">First image is shown as the primary product image. Add multiple for gallery view.</p>
+
+                  <div className="space-y-3 mb-4">
+                    {form.images.map((imgUrl, idx) => (
+                      <div key={idx} className="flex items-start gap-3 p-3 border border-[#EAEAEA] bg-[#FAFAFA]">
+                        <div className="w-12 h-14 bg-[#EAEAEA] overflow-hidden shrink-0">
+                          <img src={imgUrl} alt={`Image ${idx + 1}`} className="w-full h-full object-cover" onError={e => { (e.target as HTMLImageElement).src = ''; }} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[10px] uppercase tracking-[0.1em] text-[#999] mb-1">{idx === 0 ? 'Primary' : `Image ${idx + 1}`}</p>
+                          <p className="text-[11px] text-[#666] truncate">{imgUrl}</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => removeImage(imgUrl)}
+                          className="w-7 h-7 flex items-center justify-center border border-[#EAEAEA] hover:border-black transition-colors shrink-0"
+                        >
+                          <X size={11} />
+                        </button>
+                      </div>
+                    ))}
+                    {form.images.length === 0 && (
+                      <div className="flex items-center justify-center h-20 border border-dashed border-[#EAEAEA] text-[#AAAAAA] text-[12px]">
+                        No images added yet
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex gap-2">
                     <input
                       type="url"
-                      value={form.imageUrl}
-                      onChange={e => updateForm('imageUrl', e.target.value)}
+                      value={newImageUrl}
+                      onChange={e => setNewImageUrl(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addImage(); } }}
                       placeholder="https://example.com/image.jpg"
-                      className="w-full border border-[#EAEAEA] px-4 py-3 text-[13px] focus:border-black outline-none transition-colors"
+                      className="flex-1 border border-[#EAEAEA] px-4 py-3 text-[13px] focus:border-black outline-none transition-colors"
                     />
+                    <button
+                      type="button"
+                      onClick={addImage}
+                      className="flex items-center gap-2 px-4 py-3 border border-[#EAEAEA] text-[11px] uppercase tracking-[0.1em] hover:border-black transition-colors"
+                    >
+                      <ImagePlus size={14} />
+                      Add
+                    </button>
                   </div>
-                  {form.imageUrl && (
-                    <div className="mt-3 w-24 h-28 border border-[#EAEAEA] overflow-hidden bg-[#F5F5F5]">
-                      <img
-                        src={form.imageUrl}
-                        alt="Preview"
-                        className="w-full h-full object-cover"
-                        onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                      />
-                    </div>
-                  )}
                 </section>
 
               </div>
 
               {/* Modal Footer */}
-              <div className="border-t border-[#EAEAEA] px-8 py-5 flex gap-3 bg-white">
+              <div className="border-t border-[#EAEAEA] px-8 py-5 flex gap-3 bg-white shrink-0">
                 <button
                   type="button"
                   onClick={closeModal}

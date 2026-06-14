@@ -30,12 +30,15 @@ router.get("/products", async (req, res): Promise<void> => {
     return;
   }
 
-  const { category, badge, q, minPrice, maxPrice, sortBy } = queryResult.data;
+  const { category, subcategory, badge, q, minPrice, maxPrice, sortBy } = queryResult.data;
 
   let rows = await db.select().from(productsTable).where(eq(productsTable.isActive, true));
 
   if (category) {
     rows = rows.filter(r => r.category === category);
+  }
+  if (subcategory) {
+    rows = rows.filter(r => r.subcategory === subcategory);
   }
   if (badge) {
     rows = rows.filter(r => r.badge === badge);
@@ -63,18 +66,24 @@ router.get("/products", async (req, res): Promise<void> => {
     colors: r.colors ?? [],
     sizes: r.sizes ?? [],
     tags: r.tags ?? [],
+    images: r.images ?? [],
+    featured: r.featured ?? false,
+    subcategory: r.subcategory ?? null,
   }));
 
   if (sortBy) {
     normalized.sort((a, b) => {
       switch (sortBy) {
+        case "featured": return (b.featured ? 1 : 0) - (a.featured ? 1 : 0);
         case "price-asc": return a.price - b.price;
         case "price-desc": return b.price - a.price;
         case "name-asc": return a.name.localeCompare(b.name);
         case "newest": return (b.badge === "new" ? 1 : 0) - (a.badge === "new" ? 1 : 0);
-        default: return 0;
+        default: return (b.featured ? 1 : 0) - (a.featured ? 1 : 0);
       }
     });
+  } else {
+    normalized.sort((a, b) => (b.featured ? 1 : 0) - (a.featured ? 1 : 0));
   }
 
   res.json(ListProductsResponse.parse(normalized));
@@ -101,6 +110,9 @@ router.get("/products/:slug", async (req, res): Promise<void> => {
     colors: product.colors ?? [],
     sizes: product.sizes ?? [],
     tags: product.tags ?? [],
+    images: product.images ?? [],
+    featured: product.featured ?? false,
+    subcategory: product.subcategory ?? null,
   }));
 });
 

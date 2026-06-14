@@ -16,6 +16,8 @@ export interface Product {
   originalPrice?: number | null;
   category: string;
   /** @nullable */
+  subcategory?: string | null;
+  /** @nullable */
   badge?: string | null;
   colors: string[];
   sizes: string[];
@@ -24,6 +26,10 @@ export interface Product {
   bgGradient: string;
   figColorA: string;
   figColorB: string;
+  /** @nullable */
+  imageUrl?: string | null;
+  images?: string[];
+  featured?: boolean;
   sku: string;
   stock: number;
   tags: string[];

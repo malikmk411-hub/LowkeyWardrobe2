@@ -4,8 +4,9 @@ export interface Product {
   name: string;
   brand: string;
   price: number;
-  originalPrice?: number;
+  originalPrice?: number | null;
   category: 'clothing' | 'shoes' | 'accessories';
+  subcategory?: string | null;
   badge: 'new' | 'sale' | null;
   colors: string[];
   sizes: string[];
@@ -14,7 +15,9 @@ export interface Product {
   bgGradient: string;
   figColorA: string;
   figColorB: string;
-  imageUrl?: string;
+  imageUrl?: string | null;
+  images?: string[];
+  featured?: boolean;
   sku: string;
   stock: number;
   tags: string[];

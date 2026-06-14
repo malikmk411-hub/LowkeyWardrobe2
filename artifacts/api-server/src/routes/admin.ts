@@ -48,7 +48,7 @@ router.get("/admin/stats", verifyAdmin, async (req, res) => {
       const recentResult = await db.execute(sql`SELECT id, order_number, email, first_name, last_name, total, status, created_at FROM orders ORDER BY created_at DESC LIMIT 5`);
       recentOrders = recentResult.rows as any[];
     } catch {
-      // orders table may be empty
+      // orders table may not exist yet
     }
 
     res.json({
@@ -75,7 +75,12 @@ router.get("/admin/products", verifyAdmin, async (req, res) => {
 });
 
 router.post("/admin/products", verifyAdmin, async (req, res) => {
-  const { name, brand, category, price, originalPrice, badge, description, stock, sizes, colors, imageUrl, isActive, figType, bgGradient, figColorA, figColorB } = req.body as any;
+  const {
+    name, brand, category, subcategory, price, originalPrice, badge,
+    description, stock, sizes, colors, imageUrl, images, featured,
+    isActive, figType, bgGradient, figColorA, figColorB
+  } = req.body as any;
+
   if (!name || !category || !price) {
     return res.status(400).json({ error: "name, category, and price are required" });
   }
@@ -89,12 +94,16 @@ router.post("/admin/products", verifyAdmin, async (req, res) => {
     const defaultFigColorA = figColorA || '#c0c0c0';
     const defaultFigColorB = figColorB || '#1e1e1e';
 
+    const imagesList: string[] = Array.isArray(images) ? images.filter(Boolean) : [];
+    const primaryImage = imageUrl || imagesList[0] || null;
+
     const [created] = await db.insert(productsTable).values({
       slug,
       sku,
       name,
       brand: brand || 'Lowkey Wardrobe',
       category,
+      subcategory: subcategory || null,
       price: price.toString(),
       originalPrice: originalPrice ? originalPrice.toString() : null,
       badge: badge || null,
@@ -102,7 +111,9 @@ router.post("/admin/products", verifyAdmin, async (req, res) => {
       stock: parseInt(stock) || 0,
       sizes: sizes || [],
       colors: colors || [],
-      imageUrl: imageUrl || null,
+      imageUrl: primaryImage,
+      images: imagesList,
+      featured: featured === true,
       isActive: isActive !== undefined ? isActive : true,
       figType: defaultFigType,
       bgGradient: defaultBgGradient,
@@ -120,12 +131,16 @@ router.post("/admin/products", verifyAdmin, async (req, res) => {
 
 router.put("/admin/products/:id", verifyAdmin, async (req, res) => {
   const id = parseInt(req.params.id);
-  const { name, brand, category, price, originalPrice, badge, description, stock, isActive, sizes, colors, imageUrl } = req.body as any;
+  const {
+    name, brand, category, subcategory, price, originalPrice, badge,
+    description, stock, isActive, sizes, colors, imageUrl, images, featured
+  } = req.body as any;
   try {
     const updates: any = {};
     if (name !== undefined) updates.name = name;
     if (brand !== undefined) updates.brand = brand;
     if (category !== undefined) updates.category = category;
+    if (subcategory !== undefined) updates.subcategory = subcategory || null;
     if (price !== undefined) updates.price = price.toString();
     if (originalPrice !== undefined) updates.originalPrice = originalPrice ? originalPrice.toString() : null;
     if (badge !== undefined) updates.badge = badge || null;
@@ -134,7 +149,16 @@ router.put("/admin/products/:id", verifyAdmin, async (req, res) => {
     if (isActive !== undefined) updates.isActive = isActive;
     if (sizes !== undefined) updates.sizes = sizes;
     if (colors !== undefined) updates.colors = colors;
-    if (imageUrl !== undefined) updates.imageUrl = imageUrl || null;
+    if (featured !== undefined) updates.featured = featured === true;
+
+    if (images !== undefined) {
+      const imagesList: string[] = Array.isArray(images) ? images.filter(Boolean) : [];
+      updates.images = imagesList;
+      updates.imageUrl = imageUrl !== undefined ? (imageUrl || null) : (imagesList[0] || null);
+    } else if (imageUrl !== undefined) {
+      updates.imageUrl = imageUrl || null;
+    }
+
     updates.updatedAt = new Date();
 
     const [updated] = await db.update(productsTable).set(updates).where(eq(productsTable.id, id)).returning();
