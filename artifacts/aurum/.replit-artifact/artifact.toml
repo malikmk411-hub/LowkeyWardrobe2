@@ -18,9 +18,16 @@ localPort = 19800
 run = "pnpm --filter @workspace/aurum run dev"
 
 [services.production]
-build = [ "pnpm", "--filter", "@workspace/aurum", "run", "build" ]
 publicDir = "artifacts/aurum/dist/public"
 serve = "static"
+
+[services.production.build]
+args = ["pnpm", "--filter", "@workspace/aurum", "run", "build"]
+
+[services.production.build.env]
+PORT = "19800"
+BASE_PATH = "/"
+NODE_ENV = "production"
 
 [[services.production.rewrites]]
 from = "/*"
