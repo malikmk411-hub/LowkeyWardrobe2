@@ -23,7 +23,10 @@ export const HealthCheckResponse = zod.object({
 export const ListProductsQueryParams = zod.object({
   "category": zod.coerce.string().optional(),
   "badge": zod.coerce.string().optional(),
-  "q": zod.coerce.string().optional()
+  "q": zod.coerce.string().optional(),
+  "minPrice": zod.coerce.number().optional(),
+  "maxPrice": zod.coerce.number().optional(),
+  "sortBy": zod.enum(['featured', 'newest', 'price-asc', 'price-desc', 'name-asc']).optional()
 })
 
 export const ListProductsResponseItem = zod.object({

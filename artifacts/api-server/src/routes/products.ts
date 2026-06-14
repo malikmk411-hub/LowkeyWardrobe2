@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { ilike, or, eq, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { db, productsTable } from "@workspace/db";
 import {
   ListProductsQueryParams,
@@ -30,7 +30,7 @@ router.get("/products", async (req, res): Promise<void> => {
     return;
   }
 
-  const { category, badge, q } = queryResult.data;
+  const { category, badge, q, minPrice, maxPrice, sortBy } = queryResult.data;
 
   let rows = await db.select().from(productsTable).where(eq(productsTable.isActive, true));
 
@@ -48,8 +48,14 @@ router.get("/products", async (req, res): Promise<void> => {
       (r.tags ?? []).some(t => t.toLowerCase().includes(lower))
     );
   }
+  if (minPrice !== undefined) {
+    rows = rows.filter(r => Number(r.price) >= minPrice);
+  }
+  if (maxPrice !== undefined) {
+    rows = rows.filter(r => Number(r.price) <= maxPrice);
+  }
 
-  res.json(ListProductsResponse.parse(rows.map(r => ({
+  const normalized = rows.map(r => ({
     ...r,
     price: Number(r.price),
     originalPrice: r.originalPrice ? Number(r.originalPrice) : null,
@@ -57,7 +63,21 @@ router.get("/products", async (req, res): Promise<void> => {
     colors: r.colors ?? [],
     sizes: r.sizes ?? [],
     tags: r.tags ?? [],
-  }))));
+  }));
+
+  if (sortBy) {
+    normalized.sort((a, b) => {
+      switch (sortBy) {
+        case "price-asc": return a.price - b.price;
+        case "price-desc": return b.price - a.price;
+        case "name-asc": return a.name.localeCompare(b.name);
+        case "newest": return (b.badge === "new" ? 1 : 0) - (a.badge === "new" ? 1 : 0);
+        default: return 0;
+      }
+    });
+  }
+
+  res.json(ListProductsResponse.parse(normalized));
 });
 
 router.get("/products/:slug", async (req, res): Promise<void> => {

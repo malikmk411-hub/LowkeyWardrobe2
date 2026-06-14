@@ -9,6 +9,7 @@
 export * from './errorResponse';
 export * from './healthStatus';
 export * from './listProductsParams';
+export * from './listProductsSortBy';
 export * from './newsletterInput';
 export * from './newsletterResponse';
 export * from './product';

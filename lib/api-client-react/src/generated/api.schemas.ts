@@ -58,5 +58,19 @@ export type ListProductsParams = {
 category?: string;
 badge?: string;
 q?: string;
+minPrice?: number;
+maxPrice?: number;
+sortBy?: ListProductsSortBy;
 };
+
+export type ListProductsSortBy = typeof ListProductsSortBy[keyof typeof ListProductsSortBy];
+
+
+export const ListProductsSortBy = {
+  featured: 'featured',
+  newest: 'newest',
+  'price-asc': 'price-asc',
+  'price-desc': 'price-desc',
+  'name-asc': 'name-asc',
+} as const;
 

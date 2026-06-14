@@ -50,6 +50,22 @@ paths:
           required: false
           schema:
             type: string
+        - name: minPrice
+          in: query
+          required: false
+          schema:
+            type: number
+        - name: maxPrice
+          in: query
+          required: false
+          schema:
+            type: number
+        - name: sortBy
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [featured, newest, price-asc, price-desc, name-asc]
       responses:
         "200":
           description: List of products

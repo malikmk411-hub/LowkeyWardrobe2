@@ -5,9 +5,13 @@
  * AURUM Luxury Fashion eCommerce API
  * OpenAPI spec version: 0.1.0
  */
+import type { ListProductsSortBy } from './listProductsSortBy';
 
 export type ListProductsParams = {
 category?: string;
 badge?: string;
 q?: string;
+minPrice?: number;
+maxPrice?: number;
+sortBy?: ListProductsSortBy;
 };
