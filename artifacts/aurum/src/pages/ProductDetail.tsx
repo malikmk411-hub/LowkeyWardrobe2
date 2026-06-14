@@ -22,6 +22,7 @@ export default function ProductDetail() {
   const [activeColor, setActiveColor] = useState<string>('');
   const [zoomed, setZoomed] = useState(false);
   const [sizeGuideOpen, setSizeGuideOpen] = useState(false);
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
 
   const { addItem } = useCartStore();
   const { toggle, isInWishlist } = useWishlistStore();
@@ -31,9 +32,20 @@ export default function ProductDetail() {
     if (product) {
       setActiveSize('');
       setActiveColor(product.colors[0]);
+      setActiveImageIndex(0);
       window.scrollTo(0, 0);
     }
   }, [product]);
+
+  // Build the full images array: use product.images if available, else fall back to imageUrl
+  const allImages: string[] = product
+    ? (product.images && product.images.length > 0
+        ? product.images
+        : product.imageUrl
+        ? [product.imageUrl]
+        : [])
+    : [];
+  const activeImage = allImages[activeImageIndex] ?? null;
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => e.key === 'Escape' && setZoomed(false);
@@ -80,15 +92,19 @@ export default function ProductDetail() {
     ? Math.round((1 - Number(product.price) / Number(product.originalPrice)) * 100)
     : null;
 
-  const ImageArea = () => (
+  const MainImage = () => (
     <div
-      className="w-full max-w-[500px] aspect-[3/4] relative z-10 cursor-zoom-in group/img"
+      className="w-full aspect-[3/4] relative cursor-zoom-in group/img overflow-hidden"
       onClick={() => setZoomed(true)}
     >
-      {product.imageUrl ? (
-        <img
-          src={product.imageUrl}
+      {activeImage ? (
+        <motion.img
+          key={activeImage}
+          src={activeImage}
           alt={product.name}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.25 }}
           className="w-full h-full object-cover"
         />
       ) : (
@@ -113,50 +129,59 @@ export default function ProductDetail() {
       {/* Zoom Lightbox */}
       <AnimatePresence>
         {zoomed && (
-          <>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setZoomed(false)}
+            className="fixed inset-0 bg-black/90 z-[3000] flex items-center justify-center p-8 cursor-zoom-out"
+          >
             <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setZoomed(false)}
-              className="fixed inset-0 bg-black/90 z-[3000] flex items-center justify-center p-8 cursor-zoom-out"
+              initial={{ scale: 0.85, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.85, opacity: 0 }}
+              transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+              className="relative max-w-[600px] w-full max-h-[85vh] flex items-center justify-center"
+              onClick={e => e.stopPropagation()}
             >
-              <motion.div
-                initial={{ scale: 0.85, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0.85, opacity: 0 }}
-                transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
-                className="relative max-w-[600px] w-full max-h-[85vh] flex items-center justify-center"
-                onClick={e => e.stopPropagation()}
-              >
-                {product.imageUrl ? (
-                  <img
-                    src={product.imageUrl}
-                    alt={product.name}
-                    className="w-full h-full object-contain max-h-[85vh]"
-                  />
-                ) : (
-                  <div className="w-full aspect-[3/4]">
-                    <FigureSVG
-                      figType={product.figType}
-                      ca={product.figColorA}
-                      cb={product.figColorB}
-                      className="w-full h-full"
-                    />
-                  </div>
-                )}
-              </motion.div>
-              <button
-                onClick={() => setZoomed(false)}
-                className="absolute top-6 right-6 w-10 h-10 bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
-              >
-                <X size={20} strokeWidth={1.5} className="text-white" />
-              </button>
-              <p className="absolute bottom-6 left-1/2 -translate-x-1/2 text-white/40 text-[11px] uppercase tracking-[0.2em]">
-                Click or press Esc to close
-              </p>
+              {activeImage ? (
+                <img
+                  src={activeImage}
+                  alt={product.name}
+                  className="w-full h-full object-contain max-h-[85vh]"
+                />
+              ) : (
+                <div className="w-full aspect-[3/4]">
+                  <FigureSVG figType={product.figType} ca={product.figColorA} cb={product.figColorB} className="w-full h-full" />
+                </div>
+              )}
             </motion.div>
-          </>
+
+            {/* Lightbox thumbnail nav (if multiple images) */}
+            {allImages.length > 1 && (
+              <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex gap-2">
+                {allImages.map((img, i) => (
+                  <button
+                    key={i}
+                    onClick={e => { e.stopPropagation(); setActiveImageIndex(i); }}
+                    className={`w-12 h-14 overflow-hidden border-2 transition-all ${i === activeImageIndex ? 'border-white' : 'border-white/30 opacity-60 hover:opacity-100'}`}
+                  >
+                    <img src={img} alt="" className="w-full h-full object-cover" />
+                  </button>
+                ))}
+              </div>
+            )}
+
+            <button
+              onClick={() => setZoomed(false)}
+              className="absolute top-6 right-6 w-10 h-10 bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
+            >
+              <X size={20} strokeWidth={1.5} className="text-white" />
+            </button>
+            <p className="absolute top-6 left-1/2 -translate-x-1/2 text-white/40 text-[11px] uppercase tracking-[0.2em]">
+              Click or press Esc to close
+            </p>
+          </motion.div>
         )}
       </AnimatePresence>
 
@@ -176,23 +201,43 @@ export default function ProductDetail() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 max-w-[1600px] mx-auto min-h-[calc(100vh-140px)]">
 
-        {/* Left: Visuals */}
-        <div className="p-8 md:p-12 lg:p-20 flex flex-col items-center justify-center bg-[#F5F5F5] relative overflow-hidden">
-          {!product.imageUrl && (
+        {/* Left: Visuals — thumbnail strip + main image */}
+        <div className="flex bg-[#F5F5F5] relative overflow-hidden min-h-[500px]">
+          {!activeImage && (
             <div className="absolute inset-0" style={{ background: product.bgGradient, opacity: 0.6 }} />
           )}
 
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.8, ease: [0.4, 0, 0.2, 1] }}
-            className="relative z-10"
-          >
-            <ImageArea />
-          </motion.div>
+          {/* Thumbnail strip (only shown when 2+ images) */}
+          {allImages.length > 1 && (
+            <div className="flex flex-col gap-2 p-4 z-10 shrink-0 overflow-y-auto max-h-[calc(100vh-64px)] scrollbar-hide">
+              {allImages.map((img, i) => (
+                <button
+                  key={i}
+                  onClick={() => setActiveImageIndex(i)}
+                  className={`w-[72px] h-[88px] overflow-hidden shrink-0 border-2 transition-all duration-200 ${
+                    i === activeImageIndex ? 'border-black' : 'border-transparent opacity-60 hover:opacity-100'
+                  }`}
+                >
+                  <img src={img} alt={`View ${i + 1}`} className="w-full h-full object-cover" />
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Main image */}
+          <div className="flex-1 flex items-center justify-center p-8 md:p-10 lg:p-16 relative z-10">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.6, ease: [0.4, 0, 0.2, 1] }}
+              className="w-full max-w-[480px]"
+            >
+              <MainImage />
+            </motion.div>
+          </div>
 
           {/* Badges */}
-          <div className="absolute top-12 left-12 z-20 flex flex-col gap-2">
+          <div className={`absolute top-8 z-20 flex flex-col gap-2 ${allImages.length > 1 ? 'left-[96px]' : 'left-8'}`}>
             {isSoldOut && (
               <span className="px-3 py-1.5 text-[10px] uppercase tracking-[0.15em] text-white bg-black">Sold Out</span>
             )}
